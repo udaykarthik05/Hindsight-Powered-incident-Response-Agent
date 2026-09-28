@@ -181,4 +181,64 @@ describe("IncidentDetail Component", () => {
     expect(screen.getByText(/investigation pipeline failed/i)).toBeInTheDocument();
     expect(screen.getByText(/backend investigation service timed out after 30s/i)).toBeInTheDocument();
   });
+
+  it("renders postmortem findings with Hindsight Retained badge when memory_status is retained", () => {
+    const resolvedIncident: Incident = {
+      ...mockIncident,
+      status: "resolved",
+      root_cause: "Connection pool exhaustion due to slow analytical queries blocking pool.",
+      mitigation: "Isolated analytics traffic to read replica and increased pool capacity.",
+      resolved_at: "2025-10-15T15:00:00Z",
+      memory_status: "retained",
+    };
+
+    render(
+      <IncidentDetail
+        incident={resolvedIncident}
+        investigationResult={null}
+        onInvestigate={vi.fn()}
+        onResolve={vi.fn()}
+        investigating={false}
+        investigationError={null}
+      />
+    );
+
+    // Switch to overview tab
+    const overviewTab = screen.getByRole("button", { name: /overview & raw telemetry/i });
+    fireEvent.click(overviewTab);
+
+    expect(screen.getByText(/confirmed postmortem findings/i)).toBeInTheDocument();
+    expect(screen.getByText(/hindsight retained/i)).toBeInTheDocument();
+    expect(screen.getByText(/root cause:/i)).toBeInTheDocument();
+    expect(screen.getByText(/applied mitigation:/i)).toBeInTheDocument();
+  });
+
+  it("renders Memory Offline badge when memory_status is retention_failed", () => {
+    const offlineIncident: Incident = {
+      ...mockIncident,
+      status: "resolved",
+      root_cause: "Disk I/O saturation on WAL drive.",
+      mitigation: "Provisioned higher IOPS EBS volume.",
+      resolved_at: "2025-10-15T15:00:00Z",
+      memory_status: "retention_failed",
+    };
+
+    render(
+      <IncidentDetail
+        incident={offlineIncident}
+        investigationResult={null}
+        onInvestigate={vi.fn()}
+        onResolve={vi.fn()}
+        investigating={false}
+        investigationError={null}
+      />
+    );
+
+    const overviewTab = screen.getByRole("button", { name: /overview & raw telemetry/i });
+    fireEvent.click(overviewTab);
+
+    expect(screen.getByText(/confirmed postmortem findings/i)).toBeInTheDocument();
+    expect(screen.getByText(/memory offline/i)).toBeInTheDocument();
+  });
 });
+

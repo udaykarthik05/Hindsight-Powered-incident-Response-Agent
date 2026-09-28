@@ -46,6 +46,7 @@ class IncidentCreate(IncidentBase):
     )
     root_cause: Optional[str] = Field(default=None, description="Known root cause if already diagnosed")
     mitigation: Optional[str] = Field(default=None, description="Immediate mitigation or workaround")
+    memory_status: Optional[str] = Field(default=None, description="Hindsight memory status")
 
 
 class IncidentUpdate(BaseModel):
@@ -59,6 +60,7 @@ class IncidentUpdate(BaseModel):
     error_messages: Optional[List[str]] = None
     root_cause: Optional[str] = None
     mitigation: Optional[str] = None
+    memory_status: Optional[str] = None
 
 
 class IncidentResolve(BaseModel):
@@ -80,6 +82,10 @@ class Incident(IncidentBase):
     mitigation: Optional[str] = Field(default=None, description="Applied mitigation or remediation")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Record creation time")
     resolved_at: Optional[datetime] = Field(default=None, description="Record resolution time")
+    memory_status: Optional[str] = Field(
+        default=None,
+        description="Hindsight memory status ('retained', 'retention_failed', 'already_retained', 'not_attempted')",
+    )
 
     @classmethod
     def create_from_input(cls, input_data: IncidentCreate) -> "Incident":
@@ -100,10 +106,24 @@ class Incident(IncidentBase):
             mitigation=input_data.mitigation,
             created_at=now,
             resolved_at=now if input_data.status == IncidentStatus.RESOLVED else None,
+            memory_status=input_data.memory_status if hasattr(input_data, "memory_status") else None,
         )
+
+
+class IncidentResolveResponse(Incident):
+    """Response returned upon resolving an incident, including Hindsight retention status."""
+    memory_status: Optional[str] = Field(
+        default="not_attempted",
+        description="Status of retention into Hindsight organizational memory",
+    )
+    memory_message: Optional[str] = Field(
+        default=None,
+        description="Human-readable summary of Hindsight memory retention operation",
+    )
 
 
 class IncidentListResponse(BaseModel):
     """Response envelope for listing incidents."""
     total: int
     items: List[Incident]
+

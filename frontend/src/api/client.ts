@@ -4,6 +4,7 @@ import {
   Incident,
   IncidentCreate,
   IncidentResolve,
+  IncidentResolveResponse,
   IncidentUpdate,
   InvestigationResult,
 } from "../types";
@@ -87,7 +88,7 @@ export const api = {
     }),
 
   resolveIncident: (incidentId: string, payload: IncidentResolve) =>
-    request<Incident>(`/api/v1/incidents/${incidentId}/resolve`, {
+    request<IncidentResolveResponse>(`/api/v1/incidents/${incidentId}/resolve`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),

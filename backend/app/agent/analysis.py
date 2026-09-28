@@ -137,19 +137,41 @@ class DeterministicAnalyzer:
             extracted_keywords=top_keywords,
         )
 
-        # 6. Construct targeted Hindsight RECALL query
-        query_elements = [f"Service: {incident.affected_service}"]
-        if suspected_categories:
-            query_elements.append(f"Category: {', '.join(suspected_categories[:2])}")
-        if matched_errors:
-            query_elements.append(f"Errors: {', '.join(matched_errors[:3])}")
-        if matched_components:
-            query_elements.append(f"Components: {', '.join(matched_components[:3])}")
+        # 6. Construct targeted, evidence-based Hindsight RECALL query
+        # Collect dense, high-signal evidence terms without boilerplate filler words
+        evidence_tokens: List[str] = [incident.affected_service]
 
-        recall_query = (
-            f"Find historical incidents for {incident.affected_service} with symptoms: "
-            f"{', '.join(query_elements)}. "
-            f"Keywords: {', '.join(top_keywords[:4])}."
-        )
+        # Add classified error patterns
+        for err in matched_errors:
+            if err.lower() not in [t.lower() for t in evidence_tokens]:
+                evidence_tokens.append(err)
+
+        # Add clean error message tokens
+        for err_msg in incident.error_messages[:3]:
+            cleaned_tokens = re.sub(r"[^\w\s-]", " ", err_msg).split()
+            for token in cleaned_tokens[:3]:
+                if len(token) > 3 and token.lower() not in [t.lower() for t in evidence_tokens]:
+                    evidence_tokens.append(token)
+
+        # Add infrastructure components
+        for comp in matched_components:
+            if comp.lower() not in [t.lower() for t in evidence_tokens]:
+                evidence_tokens.append(comp)
+
+        # Add suspected categories
+        for cat in suspected_categories:
+            if cat.lower() not in [t.lower() for t in evidence_tokens]:
+                evidence_tokens.append(cat)
+
+        # Add deployment indicator if correlated
+        if deployment_correlated:
+            evidence_tokens.append("deployment migration release")
+
+        # Add salient technical keywords
+        for kw in top_keywords[:4]:
+            if kw.lower() not in [t.lower() for t in evidence_tokens]:
+                evidence_tokens.append(kw)
+
+        recall_query = " ".join(evidence_tokens)
 
         return signals, recall_query

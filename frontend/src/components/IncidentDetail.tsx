@@ -3,6 +3,7 @@ import {
   AlertCircle,
   BrainCircuit,
   CheckCircle2,
+  Database,
   FileText,
   Server,
   Sparkles,
@@ -18,7 +19,7 @@ interface Props {
   incident: Incident | null;
   investigationResult: InvestigationResult | null;
   onInvestigate: (id: string) => Promise<void>;
-  onResolve: (id: string, payload: IncidentResolve) => Promise<void>;
+  onResolve: (id: string, payload: IncidentResolve) => Promise<any>;
   investigating: boolean;
   investigationError: string | null;
 }
@@ -64,7 +65,7 @@ export const IncidentDetail: React.FC<Props> = ({
   };
 
   const handleResolveSubmit = async (payload: IncidentResolve) => {
-    await onResolve(incident.incident_id, payload);
+    return await onResolve(incident.incident_id, payload);
   };
 
   return (
@@ -132,6 +133,30 @@ export const IncidentDetail: React.FC<Props> = ({
             <div className="meta-item">
               <strong>Resolved:</strong>
               <span style={{ color: "#10b981" }}>{formatDate(incident.resolved_at)}</span>
+            </div>
+          )}
+          {incident.status === "resolved" && incident.memory_status && (
+            <div className="meta-item">
+              <strong>Memory:</strong>
+              <span
+                style={{
+                  color:
+                    incident.memory_status === "retained" || incident.memory_status === "already_retained"
+                      ? "var(--hindsight)"
+                      : "#f59e0b",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <Database size={12} />
+                {incident.memory_status === "retained"
+                  ? "Retained"
+                  : incident.memory_status === "already_retained"
+                  ? "Retained"
+                  : "Retention Offline"}
+              </span>
             </div>
           )}
         </div>
@@ -272,9 +297,52 @@ export const IncidentDetail: React.FC<Props> = ({
                   background: "rgba(16, 185, 129, 0.04)",
                 }}
               >
-                <div className="section-heading" style={{ color: "#10b981" }}>
-                  <CheckCircle2 size={16} />
-                  <span>Confirmed Postmortem Findings</span>
+                <div
+                  className="section-heading"
+                  style={{
+                    color: "#10b981",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <CheckCircle2 size={16} />
+                    <span>Confirmed Postmortem Findings</span>
+                  </div>
+                  {incident.memory_status && (
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        padding: "2px 8px",
+                        borderRadius: "var(--radius-full)",
+                        fontWeight: 600,
+                        background:
+                          incident.memory_status === "retained" || incident.memory_status === "already_retained"
+                            ? "rgba(168, 85, 247, 0.15)"
+                            : "rgba(245, 158, 11, 0.15)",
+                        color:
+                          incident.memory_status === "retained" || incident.memory_status === "already_retained"
+                            ? "var(--hindsight)"
+                            : "#f59e0b",
+                        border: `1px solid ${
+                          incident.memory_status === "retained" || incident.memory_status === "already_retained"
+                            ? "rgba(168, 85, 247, 0.3)"
+                            : "rgba(245, 158, 11, 0.3)"
+                        }`,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <Database size={12} />
+                      {incident.memory_status === "retained"
+                        ? "Hindsight Retained"
+                        : incident.memory_status === "already_retained"
+                        ? "Hindsight Retained"
+                        : "Memory Offline"}
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   <div>

@@ -105,6 +105,7 @@ export const App: React.FC = () => {
     setIncidents((prev) =>
       prev.map((inc) => (inc.incident_id === id ? resolved : inc))
     );
+    return resolved;
   };
 
   return (

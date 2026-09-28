@@ -38,8 +38,21 @@ class HeuristicReasoningEngine:
         hypotheses: List[Hypothesis] = []
         historical_ids = [m.incident_id for m in historical.recalled_incidents]
 
+        # Helper to correlate actually recalled historical incidents with hypotheses
+        def _match_history(keywords: List[str]) -> List[str]:
+            matched: List[str] = []
+            for m in historical.recalled_incidents:
+                haystack = " ".join([m.incident_id, m.title, m.summary, *m.tags]).lower()
+                if any(kw in haystack for kw in keywords):
+                    if m.incident_id not in matched:
+                        matched.append(m.incident_id)
+            return matched
+
+        db_history = _match_history(["101", "pool", "database", "postgres", "hikari"])
+        deploy_history = _match_history(["105", "deploy", "migration", "alembic", "release"])
+        api_history = _match_history(["102", "timeout", "latency", "gateway", "stripe"])
+
         if "Database Connection Pool Exhaustion" in signals.suspected_categories:
-            db_history = [hid for hid in historical_ids if "101" in hid or "pool" in hid.lower()]
             hypotheses.append(
                 Hypothesis(
                     hypothesis=(
@@ -52,7 +65,7 @@ class HeuristicReasoningEngine:
                         *([f"Correlated with recent code/deployment changes"] if signals.deployment_correlated else []),
                     ],
                     contradicting_evidence=["Database server CPU or memory utilization may still appear normal."],
-                    related_historical_incidents=db_history or (["INC-2025-101"] if historical.available else []),
+                    related_historical_incidents=db_history,
                     confidence=0.88 if signals.deployment_correlated else 0.80,
                 )
             )
@@ -69,7 +82,7 @@ class HeuristicReasoningEngine:
                         f"Affected service: {incident.affected_service}",
                     ],
                     contradicting_evidence=["Errors might stem from an external third-party or infrastructure provider."],
-                    related_historical_incidents=[hid for hid in historical_ids if "105" in hid or "deploy" in hid.lower()],
+                    related_historical_incidents=deploy_history,
                     confidence=0.75,
                 )
             )
@@ -86,7 +99,7 @@ class HeuristicReasoningEngine:
                         "High latency or 504 Gateway Timeouts reported by clients",
                     ],
                     contradicting_evidence=["Local application CPU load remains low without internal crashes."],
-                    related_historical_incidents=[hid for hid in historical_ids if "102" in hid],
+                    related_historical_incidents=api_history,
                     confidence=0.72,
                 )
             )

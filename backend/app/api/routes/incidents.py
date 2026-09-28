@@ -3,6 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.agent.incident_agent import IncidentResponseAgent, get_incident_agent
 from app.agent.models import InvestigationResult
+from app.hindsight.lifecycle import (
+    HindsightMemoryLifecycle,
+    get_memory_lifecycle,
+)
 from app.repositories.incident_repository import (
     IncidentRepository,
     get_incident_repository,
@@ -11,6 +15,7 @@ from app.schemas.incident import (
     Incident,
     IncidentCreate,
     IncidentResolve,
+    IncidentResolveResponse,
     IncidentStatus,
     IncidentUpdate,
     Severity,
@@ -101,16 +106,21 @@ def update_incident(
 
 @router.post(
     "/{incident_id}/resolve",
-    response_model=Incident,
-    summary="Mark an incident as resolved",
+    response_model=IncidentResolveResponse,
+    summary="Mark an incident as resolved and retain memory into Hindsight",
 )
-def resolve_incident(
+async def resolve_incident(
     incident_id: str,
     payload: IncidentResolve,
     repo: IncidentRepository = Depends(get_incident_repository),
-) -> Incident:
+    lifecycle: HindsightMemoryLifecycle = Depends(get_memory_lifecycle),
+) -> IncidentResolveResponse:
     """
-    Transition an incident to 'resolved' status, attaching mandatory root cause analysis and mitigation details.
+    Transition an incident to 'resolved' status, attaching mandatory root cause analysis and mitigation details,
+    and retain the postmortem record into Hindsight organizational memory.
+    
+    If Hindsight is offline or unreachable, resolution succeeds and remains recorded; memory retention
+    failure is reported gracefully in the response envelope without corrupting incident state.
     """
     resolved = repo.resolve(incident_id, payload)
     if not resolved:
@@ -118,7 +128,20 @@ def resolve_incident(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Incident with ID '{incident_id}' not found.",
         )
-    return resolved
+
+    # Ingest postmortem into Hindsight organizational memory (graceful on error)
+    retention_result = await lifecycle.retain_resolved_incident(resolved)
+
+    # Update repository with the resulting memory status
+    updated_resolved = repo.update(
+        incident_id,
+        IncidentUpdate(memory_status=retention_result.status.value),
+    ) or resolved
+
+    res_dict = updated_resolved.model_dump()
+    res_dict["memory_status"] = retention_result.status.value
+    res_dict["memory_message"] = retention_result.message
+    return IncidentResolveResponse(**res_dict)
 
 
 @router.post(
