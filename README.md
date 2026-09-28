@@ -33,52 +33,26 @@ Continuous Knowledge Growth for Future Outages
 
 ---
 
-## Current Status: Phase 1 Completed
+## Phase Status Summary
 
-Phase 1 establishes the production-grade foundation:
-- **FastAPI Backend Application**: Clean startup with async lifespan, structured logging, CORS support, and comprehensive health monitoring.
-- **Official Hindsight Integration**: Dedicated `app/hindsight/` module with `HindsightClientManager` (lifecycle & resource management) and `HindsightMemoryService` implementing `RETAIN`, `RECALL`, and `REFLECT`.
-- **Connectivity Verification**: Verification CLI script and HTTP endpoint (`/api/v1/hindsight/status`) that accurately probes server reachability without faking success.
-- **Automated Test Suite**: 13 automated tests covering health endpoints, configuration loading, and Hindsight operations.
-- **Frontend Placeholder**: Directory structure prepared for the React + Vite frontend in upcoming phases.
-
----
-
-## Project Structure
-
-```
-├── .gitignore                      # Git ignore rules for Python, Node, & secrets
-├── .env.example                    # Environment variable template
-├── pytest.ini                      # Test runner configuration
-├── requirements.txt                # Root requirements file
-├── README.md                       # Main project documentation
-├── backend/
-│   ├── README.md                   # Backend documentation
-│   ├── requirements.txt            # Backend dependencies
-│   ├── .env.example                # Backend environment template
-│   ├── verify_hindsight.py         # Verification CLI runner
-│   ├── app/
-│   │   ├── main.py                 # FastAPI application
-│   │   ├── core/
-│   │   │   ├── config.py           # Configuration management (Pydantic Settings)
-│   │   │   └── logging.py          # Structured logging
-│   │   ├── hindsight/
-│   │   │   ├── client.py           # Hindsight client manager & connection probe
-│   │   │   ├── memory.py           # RETAIN, RECALL, REFLECT service layer
-│   │   │   └── verify.py           # Verification script logic
-│   │   └── api/
-│   │       ├── router.py           # API routes aggregator
-│   │       └── routes/
-│   │           ├── health.py       # GET /health
-│   │           └── hindsight.py    # GET /api/v1/hindsight/status
-│   └── tests/
-│       ├── conftest.py             # Test fixtures & config overrides
-│       ├── test_config.py          # Config validation tests
-│       ├── test_health.py          # Health check route tests
-│       └── test_hindsight.py       # Client & memory service tests
-└── frontend/
-    └── README.md                   # Future UI architecture notes
-```
+- [x] **Phase 1: Foundation & Hindsight Integration**
+  - Project scaffolding, FastAPI application, Pydantic settings, logging.
+  - Official `hindsight-client` setup with `client.py` and `memory.py` (RETAIN, RECALL, REFLECT).
+  - Diagnostic verification CLI and HTTP health checks.
+- [x] **Phase 2: Incident Schema, Repository & Hindsight Seed Data**
+  - Pydantic incident domain models (`Incident`, `IncidentCreate`, `IncidentUpdate`, `IncidentResolve`, enums for `Severity` and `IncidentStatus`).
+  - Decoupled `IncidentRepository` interface with thread-safe `InMemoryIncidentRepository`.
+  - Full Incident REST API (`/api/v1/incidents` CRUD & `/resolve` lifecycle endpoint).
+  - 10 realistic, diverse historical software incidents (`INC-2025-101` through `INC-2025-110`).
+  - Hindsight seeding script with real RETAIN and RECALL verification tool (`backend/seed_hindsight.py`).
+  - 40 automated tests covering schemas, repository lifecycle, API routes, seed data, and Hindsight operations.
+- [ ] **Phase 3: Agent Core & Investigation Logic**
+  - Incident summarization and log/error analysis.
+  - Historical context retrieval & similarity analysis via Hindsight.
+  - Automated hypothesis generation and remediation recommendation engine.
+- [ ] **Phase 4: Web Dashboard (React + Vite)**
+  - Interactive incident triage, investigation workspace, and timeline.
+  - Visual memory recall inspection and postmortem resolution recorder.
 
 ---
 
@@ -117,34 +91,19 @@ Run the verification tool:
 python backend/verify_hindsight.py
 ```
 
-### 5. Start the Backend Server
+### 5. Seed Historical Incidents into Hindsight
+```bash
+python backend/seed_hindsight.py
+```
+
+### 6. Start the Backend Server
 ```bash
 uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 ```
-Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) in your browser for the OpenAPI interactive Swagger UI.
+Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) in your browser for the interactive Swagger UI.
 
-### 6. Run the Test Suite
+### 7. Run the Test Suite
 ```bash
 pytest
 ```
-
----
-
-## Phase Roadmap
-
-- [x] **Phase 1: Foundation & Hindsight Integration**
-  - Project scaffolding, FastAPI application, Pydantic settings, logging.
-  - Official `hindsight-client` setup with `client.py` and `memory.py` (RETAIN, RECALL, REFLECT).
-  - Diagnostic verification CLI and HTTP health checks.
-  - Test suite with 13 automated tests.
-- [ ] **Phase 2: Incident Schema & Simulation Data**
-  - Structured Incident models (ID, Title, Service, Severity, Logs, Errors, Status).
-  - Seed dataset of realistic incident scenarios.
-  - Storage/repository interface.
-- [ ] **Phase 3: Agent Core & Investigation Logic**
-  - Incident summarization and log/error analysis.
-  - Retrieval and synthesis of historical incidents using Hindsight.
-  - Hypothesis generation and remediation recommendation engine.
-- [ ] **Phase 4: Web Dashboard (React + Vite)**
-  - Interactive incident triage, timeline, and agent investigation workspace.
-  - Visual memory recall inspection and postmortem resolution recorder.
+All 40 unit and integration tests run in under 10 seconds.
