@@ -1,0 +1,18 @@
+# Core Web Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# Settings and Validation
+pydantic>=2.9.0
+pydantic-settings>=2.5.0
+python-dotenv>=1.0.1
+
+# Long-Term Incident Memory
+hindsight-client>=0.10.1
+
+# HTTP Client (Testing & Verification)
+httpx>=0.27.0
+
+# Testing
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
