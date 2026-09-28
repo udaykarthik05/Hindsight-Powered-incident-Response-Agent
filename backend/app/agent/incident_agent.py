@@ -144,6 +144,12 @@ class IncidentResponseAgent:
                         tags=tags,
                     )
                 )
+            
+            # Sort recalled matches by similarity score descending (highest relevance first)
+            recalled_matches.sort(
+                key=lambda m: (m.similarity_score is not None, m.similarity_score or 0.0),
+                reverse=True,
+            )
 
             status_msg = f"Retrieved {len(recalled_matches)} historical incidents from Hindsight."
 

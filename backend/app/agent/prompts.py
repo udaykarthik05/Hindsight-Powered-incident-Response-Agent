@@ -58,13 +58,15 @@ def build_investigation_user_prompt(
     incident: Incident,
     signals: ObservedSignals,
     historical_context: HistoricalContext,
+    max_recalled: int = 5,
 ) -> str:
     """Format incident evidence, deterministic signals, and Hindsight context into prompt."""
     recalled_str = "None (Historical memory unavailable or no matches found)"
     if historical_context.available and historical_context.recalled_incidents:
+        top_matches = historical_context.recalled_incidents[:max_recalled]
         recalled_str = "\n".join([
             f"- [{m.incident_id}] {m.title} (Service: {m.service}, Tags: {m.tags}):\n  {m.summary}"
-            for m in historical_context.recalled_incidents
+            for m in top_matches
         ])
 
     prompt = f"""### CURRENT INCIDENT DETAILS

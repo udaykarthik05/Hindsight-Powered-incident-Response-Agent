@@ -67,7 +67,7 @@ def sample_historical() -> HistoricalContext:
 
 def test_groq_configuration_defaults():
     """Verify Groq default configuration and model."""
-    settings = Settings()
+    settings = Settings(llm_api_key=None)
     assert settings.llm_provider == "groq"
     assert settings.llm_model == "openai/gpt-oss-20b"
     assert "api.groq.com" in settings.llm_base_url

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.agent.incident_agent import IncidentResponseAgent
 from app.agent.models import InvestigationResult
+from app.core.config import Settings
 from app.hindsight.lifecycle import (
     HindsightMemoryLifecycle,
     IncidentMemoryBuilder,
@@ -130,7 +131,10 @@ async def test_complete_learning_lifecycle_mocked() -> None:
     # --------------------------------------------------------------------------
     # Step 5: Run Investigation Agent
     # --------------------------------------------------------------------------
-    agent = IncidentResponseAgent(memory_service=mock_memory_service)
+    agent = IncidentResponseAgent(
+        memory_service=mock_memory_service,
+        settings=Settings(llm_provider="heuristic"),
+    )
     investigation: InvestigationResult = await agent.investigate(incident_b)
 
     # --------------------------------------------------------------------------
