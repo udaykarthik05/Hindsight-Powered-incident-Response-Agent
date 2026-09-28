@@ -203,11 +203,14 @@ class HeuristicReasoningEngine:
             ),
             confidence=round(hypotheses[0].confidence, 2),
             limitations=limitations,
+            reasoning_mode="heuristic_fallback",
+            llm_provider=None,
+            llm_model=None,
         )
 
 
 class LLMClient:
-    """Manages reasoning engine requests, dispatching to OpenAI-compatible LLM or heuristic fallback."""
+    """Manages reasoning engine requests, dispatching to OpenAI-compatible LLM (Groq) or heuristic fallback."""
 
     def __init__(self, settings: Optional[Settings] = None):
         self.settings = settings or get_settings()
@@ -223,7 +226,7 @@ class LLMClient:
         """
         Produce a structured InvestigationResult.
         
-        If an API key is present and provider is configured, calls the external LLM.
+        If an API key is present and provider is configured, calls the external LLM (Groq).
         Otherwise, seamlessly uses the HeuristicReasoningEngine.
         """
         api_key = self.settings.llm_api_key
@@ -234,7 +237,7 @@ class LLMClient:
             logger.info("Using built-in reasoning engine (provider: %s, API key configured: %s)", provider, bool(api_key))
             return HeuristicReasoningEngine.generate(incident, signals, historical)
 
-        # Call OpenAI-compatible endpoint
+        # Call OpenAI-compatible endpoint (e.g. Groq)
         endpoint = f"{self.settings.llm_base_url.rstrip('/')}/chat/completions"
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -250,25 +253,84 @@ class LLMClient:
             ],
         }
 
-        logger.info("Dispatching incident reasoning to LLM endpoint: %s (model: %s)", endpoint, self.settings.llm_model)
+        logger.info(
+            "Dispatching incident reasoning to LLM provider '%s' (endpoint: %s, model: %s)",
+            self.settings.llm_provider,
+            endpoint,
+            self.settings.llm_model,
+        )
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=45.0) as client:
                 response = await client.post(endpoint, headers=headers, json=body)
                 response.raise_for_status()
                 data = response.json()
-                raw_content = data["choices"][0]["message"]["content"]
-                parsed_json = json.loads(raw_content)
 
-                # Ensure observed_signals and historical_context are attached
+                choices = data.get("choices") or []
+                if not choices:
+                    raise ValueError("LLM response did not contain choices")
+
+                raw_content = choices[0]["message"]["content"]
+                # Strip markdown json codeblock if present
+                clean_content = raw_content.strip()
+                if clean_content.startswith("```json"):
+                    clean_content = clean_content[7:]
+                elif clean_content.startswith("```"):
+                    clean_content = clean_content[3:]
+                if clean_content.endswith("```"):
+                    clean_content = clean_content[:-3]
+                clean_content = clean_content.strip()
+
+                parsed_json = json.loads(clean_content)
+
+                # Grounding & metadata injection
                 parsed_json["incident_id"] = incident.incident_id
                 parsed_json["observed_signals"] = signals.model_dump()
                 parsed_json["historical_context"] = historical.model_dump()
+                parsed_json["reasoning_mode"] = "llm"
+                parsed_json["llm_provider"] = self.settings.llm_provider
+                parsed_json["llm_model"] = self.settings.llm_model
 
-                return InvestigationResult(**parsed_json)
+                # Evidence boundary enforcement on hypotheses:
+                # Ensure related_historical_incidents only cite actually recalled IDs
+                recalled_ids = {m.incident_id for m in historical.recalled_incidents if m.incident_id != "HISTORICAL-MEMORY"}
+                if "hypotheses" in parsed_json and isinstance(parsed_json["hypotheses"], list):
+                    for hyp in parsed_json["hypotheses"]:
+                        if isinstance(hyp, dict):
+                            raw_history = hyp.get("related_historical_incidents") or []
+                            # Filter only legitimate recalled IDs
+                            hyp["related_historical_incidents"] = [
+                                hid for hid in raw_history if hid in recalled_ids
+                            ]
+                            # Clamp confidence between 0.0 and 1.0
+                            conf = hyp.get("confidence", 0.7)
+                            hyp["confidence"] = max(0.0, min(1.0, float(conf)))
+
+                result = InvestigationResult(**parsed_json)
+                logger.info(
+                    "LLM reasoning succeeded (%d hypotheses generated, overall confidence: %.2f)",
+                    len(result.hypotheses),
+                    result.confidence,
+                )
+                return result
+
+        except httpx.HTTPStatusError as http_err:
+            status = http_err.response.status_code
+            if status == 429:
+                logger.warning("Groq rate limit exceeded (HTTP 429 Too Many Requests). Falling back to heuristic engine.")
+            elif status in (401, 403):
+                logger.warning("Groq authentication failure (HTTP %s). Falling back to heuristic engine.", status)
+            else:
+                logger.warning("Groq API returned HTTP error %s. Falling back to heuristic engine.", status)
+            return HeuristicReasoningEngine.generate(incident, signals, historical)
+
+        except httpx.TimeoutException:
+            logger.warning("Groq API request timed out after 45s. Falling back to heuristic engine.")
+            return HeuristicReasoningEngine.generate(incident, signals, historical)
+
         except Exception as err:
             logger.warning(
-                "LLM API request failed (%s: %s). Falling back gracefully to built-in reasoning engine.",
+                "LLM reasoning failed (%s: %s). Falling back gracefully to built-in reasoning engine.",
                 type(err).__name__,
                 err,
             )

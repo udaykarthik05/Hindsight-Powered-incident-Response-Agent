@@ -26,6 +26,9 @@ export const InvestigationView: React.FC<Props> = ({ result }) => {
     remediation_recommendations,
     confidence,
     limitations,
+    reasoning_mode,
+    llm_provider,
+    llm_model,
   } = result;
 
   return (
@@ -38,6 +41,8 @@ export const InvestigationView: React.FC<Props> = ({ result }) => {
             alignItems: "center",
             justifyContent: "space-between",
             marginBottom: "10px",
+            flexWrap: "wrap",
+            gap: "8px",
           }}
         >
           <div
@@ -56,8 +61,37 @@ export const InvestigationView: React.FC<Props> = ({ result }) => {
             <span>Executive Investigation Summary</span>
           </div>
 
-          <div className="confidence-pill" style={{ fontSize: "12px", padding: "4px 10px" }}>
-            Confidence: {(confidence * 100).toFixed(0)}%
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 600,
+                padding: "3px 8px",
+                borderRadius: "4px",
+                letterSpacing: "0.02em",
+                background:
+                  reasoning_mode === "llm"
+                    ? "rgba(16, 185, 129, 0.15)"
+                    : "rgba(99, 102, 241, 0.15)",
+                color:
+                  reasoning_mode === "llm"
+                    ? "#10b981"
+                    : "var(--accent-light)",
+                border: `1px solid ${
+                  reasoning_mode === "llm"
+                    ? "rgba(16, 185, 129, 0.3)"
+                    : "rgba(99, 102, 241, 0.3)"
+                }`,
+              }}
+            >
+              {reasoning_mode === "llm"
+                ? `🤖 ${llm_provider?.toUpperCase() || "GROQ"} LLM (${llm_model || "openai/gpt-oss-20b"})`
+                : "⚡ Heuristic Reasoning Engine"}
+            </span>
+
+            <div className="confidence-pill" style={{ fontSize: "12px", padding: "4px 10px" }}>
+              Confidence: {(confidence * 100).toFixed(0)}%
+            </div>
           </div>
         </div>
 

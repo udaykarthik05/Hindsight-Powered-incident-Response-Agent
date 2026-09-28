@@ -104,6 +104,18 @@ class InvestigationResult(BaseModel):
         default_factory=list,
         description="Caveats, missing evidence, or assumptions made during analysis",
     )
+    reasoning_mode: str = Field(
+        default="heuristic_fallback",
+        description="Reasoning engine used: 'llm' or 'heuristic_fallback'",
+    )
+    llm_provider: Optional[str] = Field(
+        default=None,
+        description="LLM provider name if reasoning_mode == 'llm'",
+    )
+    llm_model: Optional[str] = Field(
+        default=None,
+        description="LLM model identifier if reasoning_mode == 'llm'",
+    )
     generated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc),
         description="Timestamp when the investigation was completed",

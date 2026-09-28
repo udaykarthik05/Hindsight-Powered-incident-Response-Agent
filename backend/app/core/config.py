@@ -1,6 +1,6 @@
 from functools import lru_cache
 from typing import List, Optional
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -41,30 +41,30 @@ class Settings(BaseSettings):
         description="Request timeout in seconds for Hindsight operations",
     )
 
-    # LLM Reasoning Engine Configuration
+    # LLM Reasoning Engine Configuration (Groq / OpenAI-compatible)
     llm_provider: str = Field(
-        default="openai",
-        validation_alias="LLM_PROVIDER",
-        description="LLM provider: 'openai', 'gemini', 'groq', 'ollama', or 'heuristic'",
+        default="groq",
+        validation_alias=AliasChoices("LLM_PROVIDER", "GROQ_PROVIDER"),
+        description="LLM provider: 'groq', 'openai', 'gemini', 'ollama', or 'heuristic'",
     )
     llm_api_key: Optional[str] = Field(
         default=None,
-        validation_alias="LLM_API_KEY",
+        validation_alias=AliasChoices("LLM_API_KEY", "GROQ_API_KEY"),
         description="API key for the LLM provider (leave blank for heuristic fallback)",
     )
     llm_model: str = Field(
-        default="gpt-4o-mini",
-        validation_alias="LLM_MODEL",
-        description="Model identifier (e.g., 'gpt-4o-mini', 'gemini-1.5-flash', 'llama3-70b')",
+        default="openai/gpt-oss-20b",
+        validation_alias=AliasChoices("LLM_MODEL", "GROQ_MODEL"),
+        description="Model identifier (default: 'openai/gpt-oss-20b' on Groq)",
     )
     llm_base_url: str = Field(
-        default="https://api.openai.com/v1",
-        validation_alias="LLM_BASE_URL",
-        description="OpenAI-compatible API base URL",
+        default="https://api.groq.com/openai/v1",
+        validation_alias=AliasChoices("LLM_BASE_URL", "GROQ_BASE_URL"),
+        description="OpenAI-compatible API base URL (default: Groq API)",
     )
     llm_temperature: float = Field(
         default=0.2,
-        validation_alias="LLM_TEMPERATURE",
+        validation_alias=AliasChoices("LLM_TEMPERATURE", "GROQ_TEMPERATURE"),
         description="Sampling temperature for incident reasoning",
     )
 

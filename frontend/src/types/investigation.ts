@@ -54,5 +54,8 @@ export interface InvestigationResult {
   remediation_recommendations: RemediationPlan;
   confidence: number;
   limitations: string[];
+  reasoning_mode?: "llm" | "heuristic_fallback";
+  llm_provider?: string | null;
+  llm_model?: string | null;
   generated_at: string;
 }
