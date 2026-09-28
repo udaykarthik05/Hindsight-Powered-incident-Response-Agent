@@ -44,7 +44,7 @@ class HeuristicReasoningEngine:
             for m in historical.recalled_incidents:
                 haystack = " ".join([m.incident_id, m.title, m.summary, *m.tags]).lower()
                 if any(kw in haystack for kw in keywords):
-                    if m.incident_id not in matched:
+                    if m.incident_id != "HISTORICAL-MEMORY" and m.incident_id not in matched:
                         matched.append(m.incident_id)
             return matched
 

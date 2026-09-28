@@ -1,3 +1,4 @@
+import re
 from typing import List, Optional
 
 from app.agent.analysis import DeterministicAnalyzer
@@ -85,20 +86,53 @@ class IncidentResponseAgent:
             raw_results = recall_response.results or []
             logger.info("Hindsight RECALL returned %d historical memory units", len(raw_results))
 
+            seen_ids = set()
             for res in raw_results:
                 text_content = getattr(res, "text", str(res))
-                scores = getattr(res, "scores", {})
+                scores = getattr(res, "scores", None)
                 tags = getattr(res, "tags", []) or []
                 metadata = getattr(res, "metadata", {}) or {}
 
-                # Extract incident ID if present in text or metadata
-                matched_id = metadata.get("incident_id", "HISTORICAL-MEMORY")
-                title_match = metadata.get("title", f"Historical Incident ({matched_id})")
+                # Extract incident ID from metadata or text
+                matched_id = metadata.get("incident_id")
+                title_match = metadata.get("title")
 
-                # Parse score
+                if not matched_id:
+                    postmortem_match = re.search(r"POSTMORTEM RECORD:\s*(\S+)\s*[—–-]\s*([^\n\r]+)", text_content)
+                    if postmortem_match:
+                        matched_id = postmortem_match.group(1).strip()
+                        if not title_match:
+                            title_match = postmortem_match.group(2).strip()
+                    else:
+                        id_match = re.search(r"\b(INC-[\w-]+|PHASE6-[\w-]+)\b", text_content)
+                        if id_match:
+                            matched_id = id_match.group(1).strip()
+                        else:
+                            matched_id = "HISTORICAL-MEMORY"
+
+                if not title_match:
+                    first_line = text_content.splitlines()[0] if text_content else ""
+                    title_match = first_line[:80].strip() if first_line else f"Historical Incident ({matched_id})"
+
+                # Parse score accurately from RecallScores model or dict
                 sim_score = None
-                if isinstance(scores, dict):
-                    sim_score = scores.get("combined") or scores.get("similarity")
+                if scores is not None:
+                    if hasattr(scores, "final") and scores.final is not None:
+                        sim_score = round(float(scores.final), 3)
+                    elif hasattr(scores, "reranker") and scores.reranker is not None:
+                        sim_score = round(float(scores.reranker), 3)
+                    elif hasattr(scores, "semantic") and scores.semantic is not None:
+                        sim_score = round(float(scores.semantic), 3)
+                    elif isinstance(scores, dict):
+                        score_val = scores.get("final") or scores.get("reranker") or scores.get("combined") or scores.get("similarity")
+                        if score_val is not None:
+                            sim_score = round(float(score_val), 3)
+
+                # Deduplicate by matched_id if already added
+                if matched_id != "HISTORICAL-MEMORY" and matched_id in seen_ids:
+                    continue
+                if matched_id != "HISTORICAL-MEMORY":
+                    seen_ids.add(matched_id)
 
                 recalled_matches.append(
                     HistoricalIncidentMatch(
