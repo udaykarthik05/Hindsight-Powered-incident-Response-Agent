@@ -1,6 +1,8 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
+from app.agent.incident_agent import IncidentResponseAgent, get_incident_agent
+from app.agent.models import InvestigationResult
 from app.repositories.incident_repository import (
     IncidentRepository,
     get_incident_repository,
@@ -117,3 +119,29 @@ def resolve_incident(
             detail=f"Incident with ID '{incident_id}' not found.",
         )
     return resolved
+
+
+@router.post(
+    "/{incident_id}/investigate",
+    response_model=InvestigationResult,
+    summary="Run AI incident investigation pipeline",
+)
+async def investigate_incident(
+    incident_id: str,
+    repo: IncidentRepository = Depends(get_incident_repository),
+    agent: IncidentResponseAgent = Depends(get_incident_agent),
+) -> InvestigationResult:
+    """
+    Execute the AI Incident Response Agent reasoning pipeline for the specified incident:
+    1. Loads current incident telemetry and metadata
+    2. Runs deterministic evidence analysis
+    3. Queries Hindsight RECALL & REFLECT for historical context
+    4. Generates ranked hypotheses, non-destructive investigation steps, and remediations.
+    """
+    incident = repo.get(incident_id)
+    if not incident:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Incident with ID '{incident_id}' not found.",
+        )
+    return await agent.investigate(incident)

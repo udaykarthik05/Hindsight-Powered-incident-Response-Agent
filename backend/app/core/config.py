@@ -41,6 +41,33 @@ class Settings(BaseSettings):
         description="Request timeout in seconds for Hindsight operations",
     )
 
+    # LLM Reasoning Engine Configuration
+    llm_provider: str = Field(
+        default="openai",
+        validation_alias="LLM_PROVIDER",
+        description="LLM provider: 'openai', 'gemini', 'groq', 'ollama', or 'heuristic'",
+    )
+    llm_api_key: Optional[str] = Field(
+        default=None,
+        validation_alias="LLM_API_KEY",
+        description="API key for the LLM provider (leave blank for heuristic fallback)",
+    )
+    llm_model: str = Field(
+        default="gpt-4o-mini",
+        validation_alias="LLM_MODEL",
+        description="Model identifier (e.g., 'gpt-4o-mini', 'gemini-1.5-flash', 'llama3-70b')",
+    )
+    llm_base_url: str = Field(
+        default="https://api.openai.com/v1",
+        validation_alias="LLM_BASE_URL",
+        description="OpenAI-compatible API base URL",
+    )
+    llm_temperature: float = Field(
+        default=0.2,
+        validation_alias="LLM_TEMPERATURE",
+        description="Sampling temperature for incident reasoning",
+    )
+
     @property
     def cors_origin_list(self) -> List[str]:
         """Parse comma-separated CORS origins into a list."""

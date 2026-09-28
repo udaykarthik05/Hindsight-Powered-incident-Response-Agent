@@ -192,7 +192,7 @@ class HindsightMemoryService:
             logger.info("Recalled %d relevant historical memory items", count)
             return response
         except Exception as err:
-            logger.error("Hindsight RECALL failed: %s", err, exc_info=True)
+            logger.warning("Hindsight RECALL failed: %s", err)
             raise HindsightOperationError(f"Failed to recall incident memories: {err}") from err
 
     async def reflect(self, reflect_input: MemoryReflectInput) -> ReflectResponse:
@@ -219,7 +219,7 @@ class HindsightMemoryService:
             logger.info("Hindsight reflection synthesized successfully.")
             return response
         except Exception as err:
-            logger.error("Hindsight REFLECT failed: %s", err, exc_info=True)
+            logger.warning("Hindsight REFLECT failed: %s", err)
             raise HindsightOperationError(f"Failed to reflect upon incident memory: {err}") from err
 
 

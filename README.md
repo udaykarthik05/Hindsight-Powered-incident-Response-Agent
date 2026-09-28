@@ -16,19 +16,19 @@ NEW INCIDENT
      ↓
 Collect Evidence & Symptoms
      ↓
-RECALL Historical Incidents (Hindsight)
+Deterministic Signal Extraction (app/agent/analysis.py)
      ↓
-Analyze Current & Historical Context
+RECALL Historical Incidents (Hindsight Memory)
      ↓
-REFLECT & Synthesize Hypotheses (Hindsight)
+REFLECT & Synthesize Comparative Reasoning (Hindsight Memory)
      ↓
-Investigate & Recommend Remediation
+LLM Synthesis & Hypothesis Generation (app/agent/llm.py)
      ↓
-Produce Incident Report
+Structured Investigation Result (Ranked Hypotheses + Non-destructive Steps + Remediation)
      ↓
-RETAIN Outcome & Postmortem (Hindsight)
+Incident Resolution & Postmortem
      ↓
-Continuous Knowledge Growth for Future Outages
+RETAIN Outcome & Learnings (Hindsight Memory)
 ```
 
 ---
@@ -45,11 +45,14 @@ Continuous Knowledge Growth for Future Outages
   - Full Incident REST API (`/api/v1/incidents` CRUD & `/resolve` lifecycle endpoint).
   - 10 realistic, diverse historical software incidents (`INC-2025-101` through `INC-2025-110`).
   - Hindsight seeding script with real RETAIN and RECALL verification tool (`backend/seed_hindsight.py`).
-  - 40 automated tests covering schemas, repository lifecycle, API routes, seed data, and Hindsight operations.
-- [ ] **Phase 3: Agent Core & Investigation Logic**
-  - Incident summarization and log/error analysis.
-  - Historical context retrieval & similarity analysis via Hindsight.
-  - Automated hypothesis generation and remediation recommendation engine.
+- [x] **Phase 3: Agent Core & Investigation Logic**
+  - Deterministic signal analysis layer extracting errors, subsystems, deployment correlations, and candidate categories.
+  - Hindsight RECALL & REFLECT integration constructing dynamic evidence-based queries.
+  - LLM synthesis layer supporting OpenAI-compatible providers with a built-in heuristic reasoning engine.
+  - Structured output (`InvestigationResult`, `Hypothesis`, `InvestigationStep`, `RemediationPlan`).
+  - `POST /api/v1/incidents/{incident_id}/investigate` endpoint.
+  - Offline resilience: gracefully degrades without fabricating memories when Hindsight is unreachable.
+  - 51 automated unit and integration tests passing.
 - [ ] **Phase 4: Web Dashboard (React + Vite)**
   - Interactive incident triage, investigation workspace, and timeline.
   - Visual memory recall inspection and postmortem resolution recorder.
@@ -81,12 +84,14 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 ```
-Ensure `HINDSIGHT_BASE_URL` points to your instance:
-- Local instance: `http://localhost:8888`
-- Hindsight Cloud: `https://api.hindsight.vectorize.io` (set `HINDSIGHT_API_KEY`)
+Key configuration parameters:
+- `HINDSIGHT_BASE_URL`: URL of your Hindsight instance (`http://localhost:8888` for local Docker or `https://api.hindsight.vectorize.io` for cloud).
+- `HINDSIGHT_API_KEY`: API key if using cloud or secured instance.
+- `HINDSIGHT_BANK_ID`: Target memory bank for incident knowledge.
+- `LLM_PROVIDER`: `"openai"`, `"gemini"`, `"groq"`, `"ollama"`, or `"heuristic"`.
+- `LLM_API_KEY`: API key for LLM provider (leave blank to run the built-in heuristic reasoning engine).
 
 ### 4. Verify Connection to Hindsight
-Run the verification tool:
 ```bash
 python backend/verify_hindsight.py
 ```
@@ -96,14 +101,19 @@ python backend/verify_hindsight.py
 python backend/seed_hindsight.py
 ```
 
-### 6. Start the Backend Server
+### 6. Run Live Agent Investigation CLI Demo
+```bash
+python backend/verify_investigation.py
+```
+
+### 7. Start the Backend Server
 ```bash
 uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 ```
-Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) in your browser for the interactive Swagger UI.
+Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) in your browser for the OpenAPI interactive Swagger UI.
 
-### 7. Run the Test Suite
+### 8. Run the Test Suite
 ```bash
 pytest
 ```
-All 40 unit and integration tests run in under 10 seconds.
+All 51 unit and integration tests run in ~12 seconds.

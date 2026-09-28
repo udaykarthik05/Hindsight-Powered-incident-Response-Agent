@@ -28,13 +28,21 @@ backend/
 │   │   ├── memory.py            # Domain operations: RETAIN, RECALL, REFLECT
 │   │   ├── seed.py              # Live RETAIN seeder & RECALL verifier
 │   │   └── verify.py            # Standalone CLI connectivity verification tool
+│   ├── agent/
+│   │   ├── __init__.py
+│   │   ├── models.py            # InvestigationResult, Hypothesis, ObservedSignals, RemediationPlan
+│   │   ├── analysis.py          # Deterministic signal extraction & recall query builder
+│   │   ├── prompts.py           # System & user prompts for LLM synthesis
+│   │   ├── llm.py               # OpenAI-compatible LLM client + HeuristicReasoningEngine
+│   │   ├── incident_agent.py    # IncidentResponseAgent orchestrator
+│   │   └── verify_investigation.py # CLI demonstration of live agent investigation
 │   └── api/
 │       ├── __init__.py
 │       ├── router.py            # Root API router
 │       └── routes/
 │           ├── __init__.py
 │           ├── health.py        # GET /health
-│           ├── incidents.py     # Incident CRUD & resolution endpoints
+│           ├── incidents.py     # Incident CRUD, resolve, and investigate endpoints
 │           └── hindsight.py     # GET /api/v1/hindsight/status & memory endpoints
 ├── tests/
 │   ├── __init__.py
@@ -46,9 +54,14 @@ backend/
 │   ├── test_incident_schemas.py # Incident schema validation tests
 │   ├── test_incident_repository.py # Repository CRUD & lifecycle tests
 │   ├── test_incident_api.py     # Incident API endpoint integration tests
-│   └── test_seed_data.py        # Seed dataset completeness & formatting validation
+│   ├── test_seed_data.py        # Seed dataset completeness & formatting validation
+│   ├── test_agent_analysis.py   # Deterministic signal extraction tests
+│   ├── test_agent_core.py       # Agent core orchestrator & offline tests
+│   ├── test_agent_api.py        # POST /api/v1/incidents/{id}/investigate tests
+│   └── test_demo_scenario.py    # Phase 3 payment API demo scenario verification
 ├── verify_hindsight.py          # Script runner for connection verification
 ├── seed_hindsight.py            # Script runner for Hindsight seeding & verification
+├── verify_investigation.py      # Script runner for agent investigation demo
 ├── requirements.txt             # Pinned backend dependencies
 ├── .env.example                 # Environment configuration template
 └── README.md
@@ -75,20 +88,26 @@ Key configuration parameters:
 - `HINDSIGHT_BASE_URL`: URL of your Hindsight instance (`http://localhost:8888` for local Docker or `https://api.hindsight.vectorize.io` for cloud).
 - `HINDSIGHT_API_KEY`: API key if using cloud or secured instance.
 - `HINDSIGHT_BANK_ID`: Target memory bank for incident knowledge.
+- `LLM_PROVIDER`: `"openai"`, `"gemini"`, `"groq"`, `"ollama"`, or `"heuristic"`.
+- `LLM_API_KEY`: API key for LLM provider (leave blank to run the built-in heuristic reasoning engine).
 
 ### 3. Verify Hindsight Connectivity
 ```bash
 python backend/verify_hindsight.py
 ```
-This tests network connectivity to Hindsight and reports server version and status without faking results.
 
 ### 4. Seed Hindsight with Historical Incidents
 ```bash
 python backend/seed_hindsight.py
 ```
-Checks reachability, ingests 10 rich historical postmortems via `RETAIN`, and verifies retention with a real `RECALL` query.
 
-### 5. Run the Backend Server
+### 5. Run Live Agent Investigation CLI Demo
+```bash
+python backend/verify_investigation.py
+```
+Executes the full pipeline: deterministic analysis -> Hindsight query -> reasoning engine -> structured output.
+
+### 6. Run the Backend Server
 ```bash
 uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
 ```
@@ -99,14 +118,15 @@ Interactive API docs are available at:
 #### Available Endpoints:
 - `GET /health`: Basic health check.
 - `POST /api/v1/incidents`: Register a new incident.
-- `GET /api/v1/incidents`: List incidents (filters: `status`, `severity`, `service`).
+- `GET /api/v1/incidents`: List incidents (filters: `?status=`, `?severity=`, `?service=`).
 - `GET /api/v1/incidents/{incident_id}`: Retrieve incident details.
 - `PATCH /api/v1/incidents/{incident_id}`: Partially update incident.
 - `POST /api/v1/incidents/{incident_id}/resolve`: Resolve incident with root cause & mitigation.
+- `POST /api/v1/incidents/{incident_id}/investigate`: Run AI investigation pipeline on the incident.
 - `GET /api/v1/hindsight/status`: Check Hindsight server connectivity.
 
-### 6. Run Tests
+### 7. Run Tests
 ```bash
 pytest backend/tests -v
 ```
-All 40 unit and integration tests run in under 10 seconds.
+All 51 unit and integration tests run in ~12 seconds.
